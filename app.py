@@ -135,7 +135,7 @@ DİĞER:
 
 Sadece gerekli alanları ekle, null olanları EKLEME:
 
-{{"search_text": "", "tender_types": [], "provinces": [], "limit": 100}}
+{{"search_text": "", "tender_types": [], "provinces": [], "limit": 2000}}
 
 JSON dışında hiçbir şey yazma."""
 
@@ -201,7 +201,7 @@ def normalize_mcp_arguments(arguments: Dict[str, Any], user_query: str) -> Dict[
         cleaned["provinces"] = [int(x) for x in prov if str(x).isdigit() and 1 <= int(x) <= 81]
 
     if not cleaned.get("limit"):
-        cleaned["limit"] = 1000
+        cleaned["limit"] = 2000
 
     for key in ["tender_date_start", "tender_date_end", "announcement_date_start", "announcement_date_end"]:
         val = cleaned.get(key)
@@ -363,6 +363,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         .no-results { text-align: center; padding: 48px; color: #718096; }
         .loading { text-align: center; padding: 48px; color: #667eea; }
         .error { padding: 16px; background: #fed7d7; color: #c53030; border-radius: 8px; margin-top: 16px; }
+        .clear-btn {
+            padding: 10px 16px; margin: 0;
+            background: #e2e8f0; color: #4a5568;
+            border: none; border-radius: 8px;
+            font-size: 14px; cursor: pointer; width: 100%;
+        }
+        .clear-btn:hover { background: #cbd5e0; }
     </style>
 </head>
 <body>
@@ -410,6 +417,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                             <option value="yes">Sadece dokümanlı</option>
                             <option value="no">Sadece dokümansız</option>
                         </select>
+                    </div>
+                    <div>
+                        <label>&nbsp;</label>
+                        <button type="button" id="clearFiltersBtn" class="clear-btn">Filtreleri Temizle</button>
                     </div>
                 </div>
                 <div class="results-count" id="resultsCount"></div>
@@ -553,6 +564,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 : filtered.length + ' / ' + allTenders.length + ' sonuç';
         }
 
+        function clearFilters() {
+            document.getElementById('filterInput').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterProvince').value = '';
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            document.getElementById('filterDocument').value = '';
+            applyFilters();
+        }
+
         function runQuery() {
             var q = document.getElementById('query').value.trim();
             if (!q) {
@@ -631,6 +652,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         document.getElementById('filterDateStart').addEventListener('change', applyFilters);
         document.getElementById('filterDateEnd').addEventListener('change', applyFilters);
         document.getElementById('filterDocument').addEventListener('change', applyFilters);
+        document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
         
         // Enter key
         document.getElementById('query').addEventListener('keydown', function(e) {
