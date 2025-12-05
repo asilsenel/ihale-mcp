@@ -2,7 +2,7 @@
 EKAP İhale Arama Scraper
 https://ekapv2.kik.gov.tr/ekap/search
 
-Bugün + 1 hafta sonrasına kadar olan tüm ihaleleri çekip CSV/Excel formatında kaydeder.
+Tüm ihaleleri çeker, bugünden itibaren 1 hafta içindekileri ve "Katılıma Açık" olanları filtreler.
 Kullanım: python ekap_scraper.py
 Gerekli: pip install playwright pandas openpyxl
          playwright install chromium
@@ -23,82 +23,80 @@ def get_date_range():
 def setup_filters(page):
     """
     Sayfa filtrelerini ayarlar:
-    - Tarih aralığı (bugün - 1 hafta sonra)
-    - Sayfa başına 50 ihale
+    - Tarih tipi: İhale Tarihi seçer
+    - Tarih aralığı: bugün - 1 hafta sonra
+    - Arama butonuna tıklar
     """
     start_date, end_date = get_date_range()
-    print(f"Tarih aralığı: {start_date} - {end_date}")
+    print(f"\nFiltreler ayarlanıyor...")
+    print(f"  Tarih aralığı: {start_date} - {end_date}")
     
     # Sayfanın tam yüklenmesini bekle
     page.wait_for_load_state('networkidle')
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(3000)
     
-    # 1. Tarih aralığı dropdown'ını aç
-    print("Tarih filtresi ayarlanıyor...")
     try:
-        # Tarih dropdown ikonuna tıkla
-        date_dropdown = page.locator('div.dx-dropdowneditor-icon').first
-        date_dropdown.click()
+        # 1. Detaylı arama butonuna tıkla (scroll into view + force click)
+        print("  [1/6] Detaylı arama açılıyor...")
+        detail_button = page.locator('[data-testid="A392188"]')
+        if detail_button.count() == 0:
+            # Alternatif selector dene
+            detail_button = page.locator('dx-button.btn.btn--light.btn--large.btn--with-icon')
+        detail_button.first.scroll_into_view_if_needed()
         page.wait_for_timeout(500)
-    except:
-        print("  Tarih dropdown bulunamadı, devam ediliyor...")
-    
-    # 2. Başlangıç tarihini gir
-    try:
-        start_input = page.locator('div.dx-start-datebox input.dx-texteditor-input').first
-        start_input.click()
-        start_input.fill('')
-        start_input.type(start_date, delay=50)
-        page.wait_for_timeout(300)
-        print(f"  Başlangıç tarihi: {start_date}")
-    except Exception as e:
-        print(f"  Başlangıç tarihi hatası: {e}")
-    
-    # 3. Bitiş tarihini gir
-    try:
-        end_input = page.locator('div.dx-end-datebox input.dx-texteditor-input').first
-        end_input.click()
-        end_input.fill('')
-        end_input.type(end_date, delay=50)
-        page.wait_for_timeout(300)
-        print(f"  Bitiş tarihi: {end_date}")
-    except Exception as e:
-        print(f"  Bitiş tarihi hatası: {e}")
-    
-    # 4. Sayfa başına 50 ihale seç
-    print("Sayfa başına 50 ihale ayarlanıyor...")
-    try:
-        # Page size dropdown'ını bul ve tıkla
-        page_size_dropdown = page.locator('dx-select-box.page-box')
-        page_size_dropdown.click()
+        detail_button.first.click(force=True)
+        page.wait_for_timeout(1500)
+        
+        # 2. İhale Tarihi radio butonuna tıkla
+        print("  [2/6] İhale Tarihi seçiliyor...")
+        radio_buttons = page.locator('div.dx-radiobutton-icon')
+        if radio_buttons.count() > 1:
+            radio_buttons.nth(1).scroll_into_view_if_needed()
+            page.wait_for_timeout(300)
+            radio_buttons.nth(1).click(force=True)
         page.wait_for_timeout(500)
         
-        # 50 seçeneğini seç
-        option_50 = page.locator('div.dx-item-content').filter(has_text='50')
-        option_50.click()
+        # 3. Tarih aralığı dropdown'ını aç
+        print("  [3/6] Tarih aralığı açılıyor...")
+        date_dropdown = page.locator('div.dx-dropdowneditor-icon').first
+        date_dropdown.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+        date_dropdown.click(force=True)
         page.wait_for_timeout(500)
-        print("  Sayfa boyutu: 50")
-    except Exception as e:
-        print(f"  Sayfa boyutu hatası: {e}")
-    
-    # 5. Arama butonuna tıkla
-    print("Arama yapılıyor...")
-    try:
+        
+        # 4. Başlangıç tarihini gir
+        print(f"  [4/6] Başlangıç tarihi: {start_date}")
+        start_input = page.locator('div.dx-start-datebox input.dx-texteditor-input')
+        start_input.click(force=True)
+        start_input.fill('')
+        start_input.type(start_date, delay=30)
+        page.keyboard.press('Enter')
+        page.wait_for_timeout(500)
+        
+        # 5. Bitiş tarihini gir
+        print(f"  [5/6] Bitiş tarihi: {end_date}")
+        end_input = page.locator('div.dx-end-datebox input.dx-texteditor-input')
+        end_input.click(force=True)
+        end_input.fill('')
+        end_input.type(end_date, delay=30)
+        page.keyboard.press('Enter')
+        page.wait_for_timeout(500)
+        
+        # 6. Arama butonuna tıkla
+        print("  [6/6] Arama yapılıyor...")
         search_button = page.locator('#search-ihale')
-        search_button.click()
+        search_button.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+        search_button.click(force=True)
         page.wait_for_timeout(3000)  # Sonuçların yüklenmesini bekle
-        print("  Arama tamamlandı")
+        
+        print("✓ Filtreler başarıyla uygulandı")
+        
     except Exception as e:
-        print(f"  Arama hatası: {e}")
-    
-    # Overlay varsa kapat
-    try:
-        overlay = page.locator('div.overlay')
-        if overlay.count() > 0 and overlay.is_visible():
-            overlay.click()
-            page.wait_for_timeout(500)
-    except:
-        pass
+        print(f"✗ Filtreleme hatası: {e}")
+        import traceback
+        traceback.print_exc()
+
 
 
 def scrape_ihaleler(page, max_pages=None):
@@ -119,6 +117,10 @@ def scrape_ihaleler(page, max_pages=None):
         print(f"\n{'='*50}")
         print(f"Sayfa {current_page} işleniyor...")
         print('='*50)
+        
+        if current_page > 30:
+            print("Maksimum sayfa limiti aşıldı, çıkılıyor...")
+            break
         
         # Sayfanın yüklenmesini bekle
         try:
@@ -251,25 +253,93 @@ def safe_get_text(locator):
     return ''
 
 
-def save_to_csv(data, filename=None):
+def process_data(ihaleler):
+    """
+    Çekilen verileri işler ve filtreler.
+    
+    İşlemler:
+    1. tum_badgeler sütununu sil
+    2. il_saat sütununu il ve tarih olarak ayır
+    3. Tarih: bugünden itibaren 1 hafta içindekiler (filter in)
+    4. katilim_durumu: virgülden sonrasını al, "Katılıma Açık" olmayanları filter out
+    
+    Returns:
+        pd.DataFrame: İşlenmiş ve filtrelenmiş veri
+    """
+    df = pd.DataFrame(ihaleler)
+    
+    print(f"\n{'='*50}")
+    print("VERİ İŞLEME")
+    print('='*50)
+    print(f"Başlangıç kayıt sayısı: {len(df)}")
+    
+    # 1. tum_badgeler sütununu sil
+    if 'tum_badgeler' in df.columns:
+        df = df.drop(columns=['tum_badgeler'])
+        print("✓ tum_badgeler sütunu silindi")
+    
+    # 2. il_saat sütununu ayır (virgülden böl)
+    if 'il_saat' in df.columns:
+        # Virgülden böl: "İstanbul, 10.12.2024 14:30" -> ["İstanbul", " 10.12.2024 14:30"]
+        split_data = df['il_saat'].str.split(',', n=1, expand=True)
+        df['il'] = split_data[0].str.strip() if 0 in split_data.columns else ''
+        df['tarih_str'] = split_data[1].str.strip() if 1 in split_data.columns else ''
+        
+        # Tarih sütununu datetime'a çevir (dd.MM.yyyy HH:mm formatı)
+        df['tarih'] = pd.to_datetime(df['tarih_str'], format='%d.%m.%Y %H:%M', errors='coerce')
+        
+        # Orijinal il_saat sütununu sil
+        df = df.drop(columns=['il_saat', 'tarih_str'])
+        print("✓ il_saat sütunu 'il' ve 'tarih' olarak ayrıldı")
+    
+    # 3. Tarih filtresi: bugünden itibaren 1 hafta içindekiler
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    one_week_later = today + timedelta(days=7)
+    
+    print(f"  Tarih aralığı: {today.strftime('%d.%m.%Y')} - {one_week_later.strftime('%d.%m.%Y')}")
+    
+    #before_filter = len(df)
+    #df = df[df['tarih'].notna()]  # NaT olanları çıkar
+    #df = df[(df['tarih'].dt.date >= today.date()) & (df['tarih'].dt.date <= one_week_later.date())]
+    #print(f"✓ Tarih filtresi uygulandı: {before_filter} -> {len(df)} kayıt")
+    
+    # 4. katilim_durumu: virgülden sonrasını al ve "Katılıma Açık" filtrele
+    if 'katilim_durumu' in df.columns:
+        # Virgülden sonrasını al: "Açık İhale, Katılıma Açık" -> "Katılıma Açık"
+        df['katilim_durumu'] = df['katilim_durumu'].apply(
+            lambda x: x.split(',')[-1].strip() if pd.notna(x) and ',' in str(x) else str(x).strip()
+        )
+        
+        before_filter = len(df)
+        df = df[df['katilim_durumu'] == 'Katılıma Açık']
+        print(f"✓ Katılım filtresi uygulandı: {before_filter} -> {len(df)} kayıt (sadece 'Katılıma Açık')")
+    
+    # Sütun sırasını düzenle
+    column_order = ['ikn', 'ihale', 'ihale_turu', 'il', 'tarih', 'katilim_durumu']
+    existing_columns = [col for col in column_order if col in df.columns]
+    df = df[existing_columns]
+    
+    print(f"\nSonuç: {len(df)} ihale")
+    
+    return df
+
+
+def save_to_csv(df, filename=None):
     """Verileri CSV dosyasına kaydeder."""
     if not filename:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'ekap_ihaleler_{timestamp}.csv'
     
-    df = pd.DataFrame(data)
     df.to_csv(filename, index=False, encoding='utf-8-sig')
     print(f"\n✓ CSV kaydedildi: {filename}")
     return filename
 
 
-def save_to_excel(data, filename=None):
+def save_to_excel(df, filename=None):
     """Verileri Excel dosyasına kaydeder."""
     if not filename:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'ekap_ihaleler_{timestamp}.xlsx'
-    
-    df = pd.DataFrame(data)
     
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='İhaleler', index=False)
@@ -301,13 +371,11 @@ def get_column_letter(col_idx):
 def main():
     """Ana fonksiyon"""
     url = "https://ekapv2.kik.gov.tr/ekap/search"
-    start_date, end_date = get_date_range()
     
     print("="*60)
     print("EKAP İhale Scraper")
     print("="*60)
     print(f"URL: {url}")
-    print(f"Tarih Aralığı: {start_date} - {end_date}")
     print(f"Başlangıç: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     with sync_playwright() as p:
@@ -326,7 +394,7 @@ def main():
             print(f"\nSayfa yükleniyor: {url}")
             page.goto(url, wait_until='networkidle')
             
-            # Filtreleri ayarla (tarih + sayfa boyutu)
+            # Filtreleri ayarla (tarih aralığı)
             setup_filters(page)
             
             # İhaleleri scrape et (max_pages=None tüm sayfalar için)
@@ -334,21 +402,30 @@ def main():
             
             if ihaleler:
                 print(f"\n{'='*60}")
-                print(f"TOPLAM {len(ihaleler)} İHALE BULUNDU")
+                print(f"TOPLAM {len(ihaleler)} İHALE ÇEKİLDİ")
                 print('='*60)
                 
-                # Verileri kaydet
-                csv_file = save_to_csv(ihaleler)
-                excel_file = save_to_excel(ihaleler)
+                # Veriyi işle ve filtrele
+                df = process_data(ihaleler)
                 
-                # İhale türü dağılımı
-                df = pd.DataFrame(ihaleler)
-                print(f"\nİhale Türü Dağılımı:")
-                print(df['ihale_turu'].value_counts().to_string())
-                
-                # Özet tablo göster
-                print(f"\nÖzet (ilk 10 kayıt):")
-                print(df[['ikn', 'ihale_turu', 'il_saat', 'ihale']].head(10).to_string())
+                if len(df) > 0:
+                    # Verileri kaydet
+                    csv_file = save_to_csv(df)
+                    excel_file = save_to_excel(df)
+                    
+                    # İhale türü dağılımı
+                    print(f"\nİhale Türü Dağılımı:")
+                    print(df['ihale_turu'].value_counts().to_string())
+                    
+                    # İl dağılımı
+                    print(f"\nİl Dağılımı (ilk 10):")
+                    print(df['il'].value_counts().head(10).to_string())
+                    
+                    # Özet tablo göster
+                    print(f"\nÖzet (ilk 10 kayıt):")
+                    print(df.head(10).to_string())
+                else:
+                    print("\n⚠ Filtreleme sonrası kayıt kalmadı!")
             else:
                 print("\n⚠ Hiç ihale bulunamadı!")
                 
